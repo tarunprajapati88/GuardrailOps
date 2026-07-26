@@ -15,10 +15,14 @@ services:
         CMD ["npx", "tsx", "demo-app/server.ts"]
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SLACK_WEBHOOK_URL=http://webhook-relay:3001/alert
+      - SLACK_RELAY_URL=http://webhook-relay:3001/alert
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - LLAMA_GUARD_ENDPOINT=http://host.docker.internal:11434
       - PORT=3000
     depends_on:
       - otel-collector
@@ -29,10 +33,13 @@ services:
     container_name: otel-collector
     command: ["--config=/etc/otelcol/config.yaml"]
     ports:
-      - "4317:4317" # OTLP gRPC
-      - "4318:4318" # OTLP HTTP
+      - "5317:4317" # OTLP gRPC
+      - "5318:4318" # OTLP HTTP
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+    networks:
+      - default
+      - signoz-network
 
   # Webhook Relay (SigNoz Alert → Slack Push)
   webhook-relay:
@@ -51,3 +58,7 @@ services:
     environment:
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
       - RELAY_PORT=3001
+
+networks:
+  signoz-network:
+    external: true

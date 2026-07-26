@@ -15,68 +15,108 @@ const signozUrl = process.env.SIGNOZ_URL || "http://localhost:8080";
 const signozApiKey = process.env.SIGNOZ_API_KEY || "";
 const PORT = process.env.SLACK_BOT_PORT || 3002;
 
+import { execSync } from "child_process";
+
 /**
- * Execute a SigNoz query range for traces
+ * Execute a SigNoz query for traces directly against ClickHouse telemetry store
  */
 async function querySigNozTraces(filterExpression: string, limit = 100) {
-  const now = Date.now();
-  const start = now - (24 * 60 * 60 * 1000); // 24 hours
-
-  const body = {
-    schemaVersion: "v1",
-    start,
-    end: now,
-    requestType: "raw",
-    compositeQuery: {
-      queries: [
-        {
-          type: "builder_query",
-          spec: {
-            name: "A",
-            signal: "traces",
-            stepInterval: 60,
-            disabled: false,
-            filter: filterExpression ? { expression: filterExpression } : undefined,
-            limit,
-            offset: 0,
-            order: [{ key: { name: "timestamp" }, direction: "desc" }]
-          }
+  try {
+    let whereClause = "WHERE serviceName = 'guardrailops-demo'";
+    if (filterExpression) {
+      if (filterExpression.includes("session_id")) {
+        const sessId = filterExpression.match(/sess_[a-zA-Z0-9_]+/)?.[0];
+        if (sessId) {
+          whereClause += ` AND attributes_string['guardrail.session_id'] = '${sessId}'`;
         }
-      ]
+      }
     }
-  };
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (signozApiKey) {
-    headers["SIGNOZ-API-KEY"] = signozApiKey;
-  }
+    const query = `SELECT trace_id, attributes_string, attributes_bool, attributes_number FROM signoz_traces.signoz_index_v3 ${whereClause} ORDER BY timestamp DESC LIMIT ${limit} FORMAT JSON;`;
+    const cmd = `wsl docker exec -i signoz-telemetrystore-clickhouse-0-0 clickhouse-client --query "${query.replace(/"/g, '\\"')}"`;
+    
+    const output = execSync(cmd, { encoding: "utf8" });
+    const parsed = JSON.parse(output);
 
-  const response = await fetch(`${signozUrl}/api/v5/query_range`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body)
-  });
+    const list = (parsed.data || []).map((row: any) => ({
+      traceID: row.trace_id,
+      data: {
+        ...row.attributes_string,
+        ...row.attributes_bool,
+        ...row.attributes_number
+      }
+    }));
 
-  if (!response.ok) {
-    console.error(`SigNoz API Error: ${response.status} ${response.statusText}`);
+    return { data: { result: [{ list }] } };
+  } catch (err) {
+    console.error("ClickHouse Query Error:", err);
     return null;
   }
-  return response.json();
 }
 
 /**
- * Handle Slash commands & messages from Slack
+ * Model Context Protocol (MCP) Tool Execution Endpoint
+ * Exposes SigNoz trace querying tools via standard MCP JSON-RPC protocol.
  */
+app.post("/mcp", async (req, res) => {
+  const { jsonrpc, method, params, id } = req.body;
+
+  if (method === "tools/list") {
+    return res.json({
+      jsonrpc: "2.0",
+      id,
+      result: {
+        tools: [
+          {
+            name: "search_signoz_traces",
+            description: "Query SigNoz OpenTelemetry traces for GuardrailOps safety events and user threat metrics",
+            inputSchema: {
+              type: "object",
+              properties: {
+                filter: { type: "string", description: "SigNoz query expression e.g. guardrail.domain = 'jailbreak'" },
+                limit: { type: "number", default: 50 }
+              }
+            }
+          },
+          {
+            name: "get_session_summary",
+            description: "Retrieve full session trace summary and threat classification for a given session ID",
+            inputSchema: {
+              type: "object",
+              properties: {
+                sessionId: { type: "string", description: "GuardrailOps session ID e.g. sess_demo_100" }
+              },
+              required: ["sessionId"]
+            }
+          }
+        ]
+      }
+    });
+  }
+
+  if (method === "tools/call") {
+    const { name, arguments: args } = params;
+    if (name === "search_signoz_traces") {
+      const data = await querySigNozTraces(args.filter || "", args.limit || 50);
+      return res.json({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(data) }] } });
+    }
+    if (name === "get_session_summary") {
+      const data = await querySigNozTraces(`guardrail.session_id = '${args.sessionId}'`);
+      return res.json({ jsonrpc: "2.0", id, result: { content: [{ type: "text", text: JSON.stringify(data) }] } });
+    }
+  }
+
+  return res.status(400).json({ jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } });
+});
 app.post("/slack/events", async (req, res) => {
   const { type, challenge, event } = req.body;
+  console.log(`[SLACK EVENT RECEIVED]: type=${type}`, JSON.stringify(req.body));
 
   if (type === "url_verification") {
     return res.json({ challenge });
   }
 
-  if (event && event.type === "app_mention") {
+  if (event && (event.type === "app_mention" || event.type === "message")) {
     const text = event.text || "";
     console.log(`[SLACK INCOMING MENTION]: "${text}" from User ${event.user}`);
 
@@ -110,7 +150,7 @@ app.post("/slack/events", async (req, res) => {
               `• *Action:* ${tData['guardrail.action'] === 'BLOCK' ? '🔴 BLOCKED' : '✅ ALLOWED'}\n` +
               `• *Classifier:* ${tData['guardrail.classifier'] || 'unknown'} (${tData['guardrail.classifier.latency_ms'] || 0}ms)\n` +
               `• *User Threat Score:* ${tData['guardrail.user.threat_score'] || 0} (Status: ${tData['guardrail.user.status'] || 'NORMAL'})\n` +
-              `• *Trace ID:* \`<http://localhost:3301/trace/${traceToReport.traceID}|${traceToReport.traceID}>\`\n` +
+              `• *Trace ID:* \`<http://localhost:8080/trace/${traceToReport.traceID}|${traceToReport.traceID}>\`\n` +
               `_Live Data pulled from SigNoz HTTP API_`;
           }
         }
@@ -138,6 +178,16 @@ app.post("/slack/events", async (req, res) => {
           `Ask me questions about safety incidents (LIVE powered by SigNoz API):\n` +
           `• \`@GuardrailOpsBot show trace for session sess_demo_100\`\n` +
           `• \`@GuardrailOpsBot summary of today\``;
+      }
+
+      // Post reply back to Slack Webhook URL if available
+      const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+      if (webhookUrl) {
+        await fetch(webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: replyText })
+        });
       }
     } catch (e) {
       console.error(e);

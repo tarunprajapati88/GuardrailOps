@@ -106,6 +106,17 @@ const PREFILTER_RULES: PatternRule[] = [
     confidence: 0.7,
   },
   {
+    name: "illegal_drugs",
+    domain: "illegal",
+    category: "specialized_advice",
+    patterns: [
+      /synthesize\s+(meth|cocaine|heroin)/i,
+      /how\s+to\s+make\s+(meth|drugs|bombs)/i,
+    ],
+    severity: "HIGH",
+    confidence: 0.9,
+  },
+  {
     name: "mental_health_distress",
     domain: "mental-health",
     category: "general_distress",
@@ -120,7 +131,7 @@ const PREFILTER_RULES: PatternRule[] = [
     domain: "mental-health",
     category: "suicidal_ideation",
     patterns: [
-      /(?:don'?t\s+want\s+to\s+be\s+here\s+anymore|end\s+my\s+life|want\s+to\s+die|kill\s+my\s*self|commit\s+suicide|end\s+it\s+all|plan\s+to\s+hurt\s+myself)/i,
+      /(?:don'?t\s+want\s+to\s+be\s+here\s+anymore|end\s+my\s+life|want\s+to\s+die|kill\s+my\s*self|commit\s+suicide|end\s+it\s+all|plan\s+to\s+hurt\s+myself|bottle\s+of\s+bleach)/i,
       /(?:no\s+reason\s+to\s+live|suicidal\s+thoughts?|self\s*harm)/i,
     ],
     severity: "CRITICAL",

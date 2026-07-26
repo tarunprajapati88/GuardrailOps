@@ -42,9 +42,6 @@ export interface BlockedResponse {
     action: string;
     classifier: string;
     classifierLatencyMs: number;
-    userThreatScore: number;
-    userStatus: string;
-    userViolationCount: number;
     pushAlert: boolean;
   };
 }
@@ -87,9 +84,6 @@ export function generateBlockedResponse(
       action: scoringResult.action,
       classifier: scoringResult.classification.classifier,
       classifierLatencyMs: scoringResult.classification.classifierLatencyMs,
-      userThreatScore: scoringResult.userThreatState.threatScore,
-      userStatus: scoringResult.userThreatState.status,
-      userViolationCount: scoringResult.userThreatState.violationCount,
       pushAlert: scoringResult.pushAlert,
     },
   };

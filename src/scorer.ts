@@ -14,28 +14,19 @@ import type {
   ClassificationResult,
   DomainConfig,
   ScoringResult,
-  UserThreatState,
   Domain,
   Action,
 } from "./types.js";
-import { ThreatTracker } from "./threat-tracker.js";
-
-const REPEAT_VIOLATION_THRESHOLD = 3;
 
 export class Scorer {
   private domainConfigs: Record<Domain, DomainConfig>;
-  private threatTracker: ThreatTracker;
 
-  constructor(
-    domainConfigs: Record<Domain, DomainConfig>,
-    threatTracker: ThreatTracker
-  ) {
+  constructor(domainConfigs: Record<Domain, DomainConfig>) {
     this.domainConfigs = domainConfigs;
-    this.threatTracker = threatTracker;
   }
 
   /**
-   * Score a classification result and determine action + alert.
+   * Score a classification result and determine action + alert statelessly.
    */
   score(
     classification: ClassificationResult | null,
@@ -54,7 +45,6 @@ export class Scorer {
         },
         action: "ALLOW",
         pushAlert: false,
-        userThreatState: this.threatTracker.getState(userId),
         fallbackMessage: null,
       };
     }
@@ -67,14 +57,11 @@ export class Scorer {
         classification,
         action: "ALLOW",
         pushAlert: false,
-        userThreatState: this.threatTracker.getState(userId),
         fallbackMessage: null,
       };
     }
 
     const mode = domainConfig.mode || "strict";
-
-    // Determine action from domain config
     let action: Action = domainConfig.action;
 
     // Apply companion mode logic for mental-health
@@ -88,33 +75,13 @@ export class Scorer {
       }
     }
 
-    // Update user threat state (only for flaggable domains)
-    let shouldFlag = domainConfig.flagUser;
-    if (classification.domain === "mental-health" && mode === "companion") {
-      shouldFlag = classification.severity === "CRITICAL";
-    }
-
-    if (shouldFlag) {
-      this.threatTracker.recordViolation(userId, classification.domain);
-    }
-
-    const userState = this.threatTracker.getState(userId);
-
-    // Determine push_alert — DECOUPLED from severity
+    // Determine push_alert (now fully delegated to SigNoz for accumulation, 
+    // we only instantly flag here if configured, e.g. CRITICAL crises)
     let pushAlert = domainConfig.alert;
     
     // In companion mode, only alert on CRITICAL mental health flags
     if (classification.domain === "mental-health" && mode === "companion") {
       pushAlert = classification.severity === "CRITICAL";
-    }
-
-    // Escalation: if user has repeated violations, force push_alert even if
-    // the individual domain wouldn't normally alert
-    if (
-      userState.violationCount >= REPEAT_VIOLATION_THRESHOLD &&
-      shouldFlag
-    ) {
-      pushAlert = true;
     }
 
     // Determine fallback message
@@ -125,7 +92,6 @@ export class Scorer {
       classification,
       action,
       pushAlert,
-      userThreatState: userState,
       fallbackMessage,
     };
   }

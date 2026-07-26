@@ -49,12 +49,11 @@ export interface UserThreatState {
   domains: Record<string, number>; // domain → count
 }
 
-// ─── Scoring result after classification + threat state ───
+// ─── Scoring result after classification ───
 export interface ScoringResult {
   classification: ClassificationResult;
   action: Action;
   pushAlert: boolean;
-  userThreatState: UserThreatState;
   fallbackMessage: string | null;
 }
 
@@ -81,9 +80,6 @@ export interface GuardrailEvent {
   fallbackMessage: string | null;
   classifierLatencyMs: number;
   classifier: string;
-  userThreatScore: number;
-  userStatus: UserStatus;
-  userViolationCount: number;
 }
 
 // ─── Custom classifier function signature ───

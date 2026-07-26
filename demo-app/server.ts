@@ -23,7 +23,7 @@ import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
 import OpenAI from "openai";
-import { wrapWithGuardrailOps } from "../src/index.js";
+import { wrapWithGuardrailOps, provisionSigNozAlerts } from "../src/index.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -70,10 +70,14 @@ const protectedClient = wrapWithGuardrailOps(rawLLMClient, {
       mode: "companion", // Showcase P1: Distinguishes general distress (ALLOW) vs imminent crisis (BLOCK)
     },
   },
-  classifier: "auto", // Uses Llama Guard 3 local → Heuristic fallback
+  classifier: "llama-guard", // Explicitly use Meta Llama Guard 3 via Ollama
   llamaGuard: {
-    endpoint: "http://localhost:11434",
+    endpoint: process.env.LLAMA_GUARD_ENDPOINT || "http://host.docker.internal:11434",
     model: "llama-guard3:1b",
+  },
+  otel: {
+    serviceName: "guardrailops-demo",
+    exporterEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || "http://localhost:4318",
   },
   alertWebhook: "http://localhost:3001/alert",
   hooks: {
@@ -81,9 +85,10 @@ const protectedClient = wrapWithGuardrailOps(rawLLMClient, {
       console.log(`[GUARDRAIL BLOCKED]: ${event.domain} / ${event.category} via ${event.classifier} (${event.classifierLatencyMs}ms) (User: ${event.userId})`);
     },
     onAlert: async (event) => {
-      console.log(`[PUSH ALERT FIRED]: ${event.domain} / ${event.category} -> Slack Webhook Relay (port 3001)`);
+      console.log(`[PUSH ALERT FIRED]: ${event.domain} / ${event.category} -> Slack Webhook Relay`);
       try {
-        await fetch("http://localhost:3001/alert", {
+        const webhookUrl = process.env.SLACK_RELAY_URL || process.env.SLACK_WEBHOOK_URL || "http://webhook-relay:3001/alert";
+        await fetch(webhookUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(event),
@@ -102,7 +107,7 @@ app.post("/api/chat", async (req, res) => {
       return res.status(400).json({ error: "Message is required" });
     }
 
-    const response: any = await protectedClient.chat.completions.create({
+    const response: any = await (protectedClient as any).chat.completions.create({
       model: "gpt-4o",
       messages: [
         { role: "system", content: "You are MindBot, a supportive AI assistant." },
@@ -126,7 +131,13 @@ app.post("/api/chat", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`\n🧠 MindBot Demo Server running on http://localhost:${PORT}`);
   console.log(`🛡️ GuardrailOps Active with 5 Threat Domains & OTel Telemetry`);
+
+  // Programmatically provision SigNoz Alert Rules via SigNoz REST API!
+  await provisionSigNozAlerts({
+    signozUrl: process.env.SIGNOZ_URL || "http://localhost:8080",
+    webhookUrl: process.env.SLACK_RELAY_URL || "http://webhook-relay:3001/alert",
+  });
 });

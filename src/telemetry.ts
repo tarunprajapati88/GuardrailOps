@@ -106,16 +106,6 @@ export function emitGuardrailSpan(event: GuardrailEvent): void {
     // ── User Threat Attributes ──
     const hashedUserId = `usr_sha256_${crypto.createHash("sha256").update(event.userId).digest("hex").substring(0, 8)}`;
     rootSpan.setAttribute("guardrail.user.id", hashedUserId);
-    rootSpan.setAttribute("guardrail.user.threat_score", event.userThreatScore);
-    rootSpan.setAttribute("guardrail.user.status", event.userStatus);
-    rootSpan.setAttribute(
-      "guardrail.user.violation_count",
-      event.userViolationCount
-    );
-    rootSpan.setAttribute(
-      "guardrail.user.flagged",
-      event.userStatus !== "NORMAL"
-    );
 
     // Set span status based on action
     if (event.blocked) {

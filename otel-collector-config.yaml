@@ -30,13 +30,15 @@ processors:
 
 exporters:
   otlp:
-    endpoint: host.docker.internal:4317
+    endpoint: signoz-ingester-1:4317
     tls:
       insecure: true
+  debug:
+    verbosity: detailed
 
 service:
   pipelines:
     traces:
       receivers: [otlp]
       processors: [attributes, batch]
-      exporters: [otlp]
+      exporters: [otlp, debug]

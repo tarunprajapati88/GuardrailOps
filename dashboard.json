@@ -1,143 +1,255 @@
 {
   "title": "GuardrailOps — AI Safety & Crisis Overview",
-  "description": "SigNoz dashboard monitoring AI safety events, jailbreak attempts, PII redaction, and user threat scores captured by GuardrailOps SDK.",
-  "tags": ["guardrailops", "ai-safety", "opentelemetry", "jailbreak"],
+  "description": "SigNoz dashboard monitoring AI safety events, jailbreak attempts, PII redaction, and repeat attacker trace counts captured by GuardrailOps SDK.",
+  "tags": [
+    "guardrailops",
+    "ai-safety",
+    "opentelemetry",
+    "jailbreak"
+  ],
+  "version": "v3",
+  "layout": [
+    {
+      "i": "panel-1-crisis-counter",
+      "x": 0,
+      "y": 0,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "i": "panel-2-severity-pie",
+      "x": 6,
+      "y": 0,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "i": "panel-3-domain-bar",
+      "x": 0,
+      "y": 4,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "i": "panel-4-latency-p99",
+      "x": 6,
+      "y": 4,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "i": "panel-5-flagged-users",
+      "x": 0,
+      "y": 8,
+      "w": 12,
+      "h": 6
+    }
+  ],
   "widgets": [
     {
       "id": "panel-1-crisis-counter",
       "title": "🚨 Total Safety Events (24h)",
-      "panelType": "value",
+      "panelTypes": "value",
       "query": {
+        "queryType": "builder",
         "builder": {
           "queryData": [
             {
-              "aggregateOperator": "count",
+              "queryName": "A",
               "dataSource": "traces",
               "disabled": false,
-              "name": "A",
-              "queryName": "A",
-              "filters": {
-                "op": "AND",
-                "items": [
-                  {
-                    "key": { "key": "guardrail.triggered", "type": "bool" },
-                    "op": "=",
-                    "value": true
-                  }
-                ]
-              }
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "count() "
+                }
+              ],
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo'"
+              },
+              "groupBy": [],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
             }
-          ]
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
         }
       }
     },
     {
       "id": "panel-2-severity-pie",
       "title": "📊 Crisis Severity Breakdown",
-      "panelType": "pie",
+      "panelTypes": "pie",
       "query": {
+        "queryType": "builder",
         "builder": {
           "queryData": [
             {
-              "aggregateOperator": "count",
+              "queryName": "A",
               "dataSource": "traces",
               "disabled": false,
-              "name": "A",
-              "queryName": "A",
-              "groupBy": [{ "key": "guardrail.crisis.severity", "type": "string" }],
-              "filters": {
-                "op": "AND",
-                "items": [
-                  {
-                    "key": { "key": "guardrail.triggered", "type": "bool" },
-                    "op": "=",
-                    "value": true
-                  }
-                ]
-              }
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "count() "
+                }
+              ],
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo'"
+              },
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "guardrail.crisis.severity--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "guardrail.crisis.severity",
+                  "type": "tag"
+                }
+              ],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
             }
-          ]
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
         }
       }
     },
     {
       "id": "panel-3-domain-bar",
       "title": "🛡️ Threat Domain Hit Rate",
-      "panelType": "bar",
+      "panelTypes": "bar",
       "query": {
+        "queryType": "builder",
         "builder": {
           "queryData": [
             {
-              "aggregateOperator": "count",
+              "queryName": "A",
               "dataSource": "traces",
               "disabled": false,
-              "name": "A",
-              "queryName": "A",
-              "groupBy": [{ "key": "guardrail.domain", "type": "string" }],
-              "filters": {
-                "op": "AND",
-                "items": [
-                  {
-                    "key": { "key": "guardrail.triggered", "type": "bool" },
-                    "op": "=",
-                    "value": true
-                  }
-                ]
-              }
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "count() "
+                }
+              ],
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo'"
+              },
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "guardrail.domain--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "guardrail.domain",
+                  "type": "tag"
+                }
+              ],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
             }
-          ]
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
         }
       }
     },
     {
       "id": "panel-4-latency-p99",
       "title": "⚡ Classifier Latency (p99)",
-      "panelType": "graph",
+      "panelTypes": "timeSeries",
       "query": {
+        "queryType": "builder",
         "builder": {
           "queryData": [
             {
-              "aggregateOperator": "p99",
-              "aggregateAttribute": { "key": "guardrail.classifier.latency_ms", "type": "number" },
+              "queryName": "A",
               "dataSource": "traces",
               "disabled": false,
-              "name": "A",
-              "queryName": "A"
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "quantile(0.99)(guardrail.classifier.latency_ms) "
+                }
+              ],
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo'"
+              },
+              "groupBy": [],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
             }
-          ]
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
         }
       }
     },
     {
       "id": "panel-5-flagged-users",
-      "title": "👤 Top Flagged Users",
-      "panelType": "table",
+      "title": "👤 Top Repeat Attacker Users (Blocked Count)",
+      "panelTypes": "table",
       "query": {
+        "queryType": "builder",
         "builder": {
           "queryData": [
             {
-              "aggregateOperator": "count",
+              "queryName": "A",
               "dataSource": "traces",
               "disabled": false,
-              "name": "A",
-              "queryName": "A",
-              "groupBy": [
-                { "key": "guardrail.user.id", "type": "string" },
-                { "key": "guardrail.user.status", "type": "string" },
-                { "key": "guardrail.user.threat_score", "type": "number" }
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "count() "
+                }
               ],
-              "filters": {
-                "op": "AND",
-                "items": [
-                  {
-                    "key": { "key": "guardrail.user.flagged", "type": "bool" },
-                    "op": "=",
-                    "value": true
-                  }
-                ]
-              }
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo' AND guardrail.action = 'BLOCK'"
+              },
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "guardrail.user.id--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "guardrail.user.id",
+                  "type": "tag"
+                }
+              ],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
             }
-          ]
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
         }
       }
     }

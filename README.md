@@ -21,9 +21,9 @@ GuardrailOps closes that loop:
 
 | Feature | Existing Guardrails | GuardrailOps |
 |:--|:--|:--|
-| **Crisis Action** | Return `{ flagged: true }` | **Block response + show 988 Crisis Lifeline + page SRE on Slack** |
-| **Vulnerable Users** | Penalize all violations equally | **Protected Mental Health status (0 threat points added; help dispatched)** |
-| **Session State** | Stateless (1 message at a time) | **Stateful multi-turn threat accumulator across user sessions** |
+| **Crisis Action** | Return `{ flagged: true }` | **Block response + show 988 Crisis Lifeline + SigNoz Alert Engine pages SRE** |
+| **Vulnerable Users** | Penalize all violations equally | **Protected Mental Health status (No threat penalties; immediate help dispatched)** |
+| **Session State** | Stateful in application memory | **Stateless High-Performance SDK + SigNoz-native Fleet-Wide Alert Accumulation** |
 | **Data Privacy** | Cloud API dependencies | **Local-First — Zero data leaves your infrastructure ($0 cost)** |
 | **Telemetry** | None or adapter layers | **Native `guardrail.*` OTel spans to SigNoz with PII scrubbed at Collector** |
 | **Incident Triage** | Manual log inspection | **Natural language trace querying via SigNoz MCP Server** |
@@ -98,19 +98,22 @@ cp .env.example .env
 npm run build
 ```
 
-### 5. Start Local Webhook Relay & Demo Server
-In separate terminal windows:
+### 5. Start Services (Docker Compose for Judges)
 
 ```bash
-# Terminal 1: Start Slack / Alert Webhook Relay
-npm run start:relay
+# Option A: Run complete stack via Docker Compose (Recommended for Judges!)
+docker compose up -d
 
-# Terminal 2: Start MindBot Demo Application
-npm run start:demo
-
-# Terminal 3: Start Slack MCP Bot (Optional)
-npm run start:bot
+# Option B: Run services manually in separate terminals
+npm run start:relay   # Start Webhook Relay (port 3001)
+npm run start:demo    # Start MindBot Demo (port 3000)
+npm run start:bot     # Start Slack MCP Bot (port 3002)
 ```
+
+### 💡 How Users Get the SigNoz Dashboard
+When a developer or team adopts GuardrailOps, they can set up the pre-built **AI Safety & Crisis Overview** dashboard in 2 ways:
+1. **1-Click UI Import (Recommended):** Open SigNoz UI (`http://localhost:8080/dashboards`) -> Click **Import JSON** -> Paste `dashboard.json`.
+2. **Programmatic API Seeding:** Run `npx tsx scripts/generate-dashboard.js` to automatically seed the dashboard directly into SigNoz's database.
 
 ### 6. Verify Local Demo & SigNoz Traces
 
@@ -120,12 +123,12 @@ npm run start:bot
    - `hacker.jack@darkweb.org` (Attacker Simulation)
 3. **Trigger Safety Violations**:
    - Click **Distress Demo**: Shows how companion mode allows general distress while observing the trace.
-   - Click **Crisis Demo**: Shows immediate block + 988 Lifeline + Slack Alert.
-   - Click **Jailbreak Demo** or **Abuse Demo**: Watch GuardrailOps intercept the prompt, return a safe refusal fallback, increase user threat score from `NORMAL` → `WATCH` → `RESTRICTED` → `BLOCKED`, and trigger Slack alerts!
-4. **View Spans in SigNoz UI**:
+   - Click **Crisis Demo**: Shows immediate block + 988 Lifeline fallback + OTel span emitted to SigNoz.
+   - Click **Jailbreak Demo** or **Abuse Demo**: Watch GuardrailOps intercept the prompt, return a safe refusal fallback, and stream OTel spans to SigNoz. SigNoz evaluates fleet-wide trace counts per user and triggers Slack alerts via its Alert Engine!
+4. **View Spans & Configure Alert Rules in SigNoz UI**:
    - Open SigNoz UI at **[http://localhost:8080](http://localhost:8080)**.
    - Go to **Traces** → Filter by Service Name: **`guardrailops-demo`**.
-   - Inspect the live OpenTelemetry span with `guardrail.domain`, `guardrail.user.threat_score`, and `guardrail.classifier.latency_ms`!
+   - Inspect live OpenTelemetry spans with `guardrail.domain`, `guardrail.action`, `guardrail.user.id`, and `guardrail.classifier.latency_ms`!
 
 ---
 
@@ -172,26 +175,27 @@ flowchart TB
         PROXY --> RESP["Response / Fallback"]
     end
 
-    subgraph SDK["GuardrailOps SDK"]
+    subgraph SDK["GuardrailOps SDK (Stateless & High-Perf)"]
         PROXY --> CLS["Two-Layer Classification Pipeline<br/>(Llama Guard 3 + Pre-Filter)"]
-        CLS --> SCORE["Severity Scorer"]
-        SCORE --> THREAT["Stateful Threat Accumulator"]
-        SCORE -->|BLOCK| BLOCK["Safe Fallback Engine"]
+        CLS --> SCORE["Stateless Severity Scorer"]
+        SCORE -->|BLOCK| BLOCK["Safe Fallback Engine (988 Lifeline)"]
         SCORE -->|ALLOW| LLM["Forward to LLM"]
         PROXY -.-> OTEL["OTel Span Emitter (@opentelemetry/sdk-node)"]
+        PROXY -.-> PROV["provisionSigNozAlerts()<br/>(Programmatic REST API)"]
     end
 
     subgraph PIPE["Privacy Pipeline"]
         OTEL -->|OTLP / HTTP :4318| COLL["OTel Collector<br/>PII Scrubbing Processor"]
     end
 
-    subgraph SZ["SigNoz Platform"]
-        COLL --> TRACES["SigNoz Trace Explorer"]
+    subgraph SZ["SigNoz Platform (Central Brain)"]
+        COLL --> TRACES["SigNoz Trace Explorer (ClickHouse)"]
         TRACES --> DASH["SigNoz Pre-Built Dashboard (dashboard.json)"]
-        TRACES --> ALERT["SigNoz Alert Engine"]
+        PROV -->|REST API :8080| ALERT["SigNoz Alert Engine<br/>(Fleet-wide Threat & Crisis Rules)"]
+        TRACES --> ALERT
     end
 
-    subgraph TRIAGE["Incident Response"]
+    subgraph TRIAGE["Incident Response & ChatOps"]
         ALERT -->|Webhook| RELAY["Slack Webhook Relay (port 3001)"]
         RELAY --> SLACK["💬 Slack Channel Push (Block Kit)"]
         SLACK --> SRE["On-Call SRE"]
@@ -214,8 +218,35 @@ flowchart TB
 | **1. Traces** | **Trace Explorer** | Every LLM request emits 1 standard OTel span with rich `guardrail.*` semantic attributes to `http://localhost:4318/v1/traces`. |
 | **2. Metrics** | **Metrics & Latency** | Derived automatically from trace spans: threat domain rate, block %, classifier latency. |
 | **3. Dashboards**| **Pre-Built Panels** | Import `dashboard.json` into SigNoz for 1-click visualization of jailbreak spikes, threat score trends, and crisis events. |
-| **4. Alerts** | **SigNoz Alert Engine** | Configure real-time alerts on threshold breaches (e.g., >3 jailbreaks/min) to automatically trigger the GuardrailOps incident relay. |
+| **4. Alerts** | **SigNoz Alert Engine** | SigNoz continuously evaluates ClickHouse trace data for threshold breaches (e.g., >3 blocked requests/5 min per user or CRITICAL crisis) and fires webhooks directly to the Slack Incident Relay. |
 | **5. Triage** | **SigNoz MCP Server** | SREs query live SigNoz trace data via natural language in Slack using the integrated Model Context Protocol (MCP) framework. |
+
+---
+
+## 💬 Slack Push Alerts & Interactive Bot Guide
+
+GuardrailOps features two distinct Slack integrations:
+
+### 1. Real-Time Push Alert Cards (0.5s Webhook Relay)
+* **What it does:** Automatically posts rich Slack Block Kit alert cards whenever an acute Crisis or severe threat block is triggered.
+* **Setup (100% Free):**
+  1. Open Slack -> Create an Incoming Webhook URL for your `#alerts` channel.
+  2. Add `SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR/WEBHOOK/URL` to your `.env` file.
+  3. Start the relay: `npm run start:relay`.
+
+---
+
+### 2. Interactive `@GuardrailOpsBot` Slack Triage (Free Local Tunnel)
+* **What it does:** Allows engineers to `@mention` `@GuardrailOpsBot` in Slack to ask natural language forensic queries about session IDs or daily crisis summaries powered by SigNoz API / Model Context Protocol (MCP).
+* **Setup (100% Free):**
+  1. **Start Bot:** Run `npm run start:bot` (listens on port `3002`).
+  2. **Expose Localhost:** In a new terminal, run `npx localtunnel --port 3002` (generates `https://<random-id>.loca.lt`).
+  3. **Configure Slack App:** Go to **[api.slack.com/apps](https://api.slack.com/apps)** -> Click your App -> **Event Subscriptions** -> Enable Events.
+  4. **Paste Request URL:** Enter `https://<random-id>.loca.lt/slack/events` -> Click **Save Changes**.
+
+#### Supported Slack Queries:
+* `@GuardrailOpsBot show trace for session sess_ms1umloe_7fw5ma` — Retrieves session trace metrics, threat category, block status, and direct SigNoz ClickHouse trace links.
+* `@GuardrailOpsBot summary of today` — Returns 24-hour fleet block rate %, total trace count, and critical incident stats.
 
 ### OpenTelemetry Span Attributes
 
@@ -233,9 +264,7 @@ guardrail.push_alert             = true
 guardrail.classifier             = "llama-guard"
 guardrail.classifier.latency_ms  = 480
 guardrail.user.id                = "usr_sha256_e3b0c442"
-guardrail.user.threat_score      = 65
-guardrail.user.status            = "RESTRICTED"
-guardrail.user.violation_count   = 3
+guardrail.session_id             = "sess_demo_100"
 ```
 
 ### PII Redaction & Data Privacy
@@ -324,14 +353,14 @@ Repeat offenders are tracked across sessions with escalating consequences:
 
 ```
 guardrailops/
-├── src/                          # SDK source code
+├── src/                          # SDK source code (Stateless & High-Perf)
 │   ├── index.ts                  # Public API exports
 │   ├── wrapper.ts                # wrapWithGuardrailOps() proxy
 │   ├── types.ts                  # TypeScript interfaces & enums
 │   ├── domains.ts                # 5 domain default configs
-│   ├── scorer.ts                 # Severity scorer & push_alert logic
-│   ├── threat-tracker.ts         # Per-user threat accumulator
-│   ├── blocker.ts                # Safe fallback generator
+│   ├── scorer.ts                 # Stateless severity scorer & push_alert logic
+│   ├── blocker.ts                # Safe fallback generator (988 Lifeline support)
+│   ├── signoz-alerts.ts          # Programmatic SigNoz Alert Provisioner (REST API)
 │   ├── telemetry.ts              # OpenTelemetry span emitter to SigNoz
 │   └── classifier/
 │       ├── index.ts              # Two-layer classifier router
@@ -344,12 +373,13 @@ guardrailops/
 ├── webhook-relay/                # SigNoz Alert → Slack Webhook Relay (server.ts)
 ├── slack-bot/                    # SigNoz MCP conversational bot for Slack (bot.ts)
 ├── scripts/
-│   └── attack-simulate.ts        # Chaos testing script
-├── dashboard.json                # SigNoz dashboard (1-click import)
+│   ├── attack-simulate.ts        # Chaos testing script
+│   └── generate-dashboard.js     # SigNoz dashboard generator & seeder script
+├── dashboard.json                # Pre-built SigNoz dashboard schema (v3)
 ├── otel-collector-config.yaml    # PII scrubbing config
 ├── casting.yaml                  # Foundry deployment configuration
 ├── casting.yaml.lock             # Foundry deployment lock file
-├── docker-compose.yml            # Full stack docker setup
+├── docker-compose.yml            # Full stack docker setup for judges
 └── .env.example                  # Environment template
 ```
 
@@ -373,7 +403,7 @@ guardrailops/
 
 ## AI Tool Disclosure
 
-> As required by hackathon Rule #7: This project was developed with assistance from AI coding tools. All generated code was reviewed, tested, and modified by the team. The architectural design, system integration decisions, and domain-specific safety logic are original work.
+> As required by hackathon Rule #7: This project was developed with assistance from AI coding tools. All generated code was reviewed, tested, and modified by me as a solo developer. The architectural design, system integration decisions, and domain-specific safety logic are original work.
 
 ## Ethical Disclaimer
 

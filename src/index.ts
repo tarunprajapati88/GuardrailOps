@@ -5,7 +5,8 @@
  */
 
 export { wrapWithGuardrailOps } from "./wrapper.js";
-export { clearUser, setThreatTTL } from "./threat-tracker.js";
+export { provisionSigNozAlerts } from "./signoz-alerts.js";
+export type { ProvisionAlertsConfig } from "./signoz-alerts.js";
 export type {
   GuardrailOpsConfig,
   LlamaGuardConfig,

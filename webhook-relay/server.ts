@@ -87,8 +87,8 @@ async function sendSlackMessage(details: {
               emoji: true
             },
             url: details.traceId 
-              ? `http://localhost:3301/trace/${details.traceId}`
-              : `http://localhost:3301/traces?tags=guardrail.session_id%3D${details.sessionId}`,
+              ? `http://localhost:8080/trace/${details.traceId}`
+              : `http://localhost:8080/traces`,
             style: "primary"
           }
         ]
@@ -135,15 +135,18 @@ app.post("/alert", async (req, res) => {
     const payload = req.body;
     console.log("Received Alert Payload:", JSON.stringify(payload, null, 2));
 
-    // Extract alert details from payload (SigNoz alert or SDK event)
-    const domain = payload.domain ?? payload.labels?.guardrail_domain ?? "jailbreak";
-    const category = payload.category ?? payload.labels?.guardrail_category ?? "prompt_injection";
-    const sessionId = payload.sessionId ?? payload.labels?.guardrail_session_id ?? "sess_unknown";
-    const userId = payload.userId ?? payload.labels?.guardrail_user_id ?? payload.user_id ?? "sarah.connor@acme.com";
-    const severity = payload.severity ?? payload.labels?.guardrail_crisis_severity ?? "CRITICAL";
-    const classifier = payload.classifier ?? payload.labels?.guardrail_classifier ?? "llama-guard";
-    const latencyMs = payload.classifierLatencyMs ?? 0;
-    const traceId = payload.traceId ?? payload.labels?.traceId;
+    // Handle standard SigNoz/Prometheus Alertmanager payload structure
+    const alertData = payload.alerts && payload.alerts.length > 0 ? payload.alerts[0].labels : payload.labels || payload;
+
+    // Extract alert details from payload
+    const domain = alertData.guardrail_domain ?? alertData.domain ?? "abuse (aggregated)";
+    const category = alertData.guardrail_category ?? alertData.category ?? "multiple_violations";
+    const sessionId = alertData.guardrail_session_id ?? alertData.sessionId ?? "aggregated_session";
+    const userId = alertData.guardrail_user_id ?? alertData.userId ?? alertData.user_id ?? "repeat_offender";
+    const severity = alertData.guardrail_crisis_severity ?? alertData.severity ?? "CRITICAL";
+    const classifier = alertData.guardrail_classifier ?? alertData.classifier ?? "SigNoz Alert Engine";
+    const latencyMs = alertData.classifierLatencyMs ?? 0;
+    const traceId = alertData.traceId;
 
     const isMentalHealth = domain === "mental-health";
 

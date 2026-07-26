@@ -17,7 +17,6 @@ import type { GuardrailOpsConfig, GuardrailEvent, Domain } from "./types.js";
 import { resolveDomainConfigs } from "./domains.js";
 import { classify } from "./classifier/index.js";
 import { Scorer } from "./scorer.js";
-import { ThreatTracker } from "./threat-tracker.js";
 import { generateBlockedResponse } from "./blocker.js";
 import { emitGuardrailSpan, initTracer } from "./telemetry.js";
 
@@ -61,9 +60,8 @@ export function wrapWithGuardrailOps<T extends object>(
     config.domainConfig
   );
 
-  // Initialize threat tracker and scorer
-  const threatTracker = new ThreatTracker();
-  const scorer = new Scorer(domainConfigs, threatTracker);
+  // Initialize scorer (now stateless)
+  const scorer = new Scorer(domainConfigs);
 
   // Initialize OTel tracer & SigNoz exporter
   if (config.otel?.enabled !== false) {
@@ -143,11 +141,6 @@ export function wrapWithGuardrailOps<T extends object>(
                         classifierLatencyMs:
                           scoringResult.classification.classifierLatencyMs,
                         classifier: scoringResult.classification.classifier,
-                        userThreatScore:
-                          scoringResult.userThreatState.threatScore,
-                        userStatus: scoringResult.userThreatState.status,
-                        userViolationCount:
-                          scoringResult.userThreatState.violationCount,
                       };
 
                       // ── STEP 4: Emit OTel span ──
@@ -185,9 +178,6 @@ export function wrapWithGuardrailOps<T extends object>(
                           action: scoringResult.action,
                           classifier: scoringResult.classification.classifier,
                           classifierLatencyMs: scoringResult.classification.classifierLatencyMs,
-                          userThreatScore: scoringResult.userThreatState.threatScore,
-                          userStatus: scoringResult.userThreatState.status,
-                          userViolationCount: scoringResult.userThreatState.violationCount,
                           pushAlert: scoringResult.pushAlert,
                         };
                       }
