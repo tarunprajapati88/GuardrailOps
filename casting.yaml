@@ -1,0 +1,11 @@
+# casting.yaml — Foundry Deployment Config for GuardrailOps
+# Judges can reproduce the full stack by running: foundryctl cast -f casting.yaml
+
+apiVersion: v1alpha1
+kind: Installation
+metadata:
+  name: guardrailops
+spec:
+  deployment:
+    flavor: compose
+    mode: docker

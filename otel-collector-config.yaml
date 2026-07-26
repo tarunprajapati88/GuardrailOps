@@ -1,0 +1,42 @@
+# otel-collector-config.yaml — GuardrailOps PII Redaction Pipeline
+#
+# This collector sits between the SDK and SigNoz.
+# It STRIPS raw user messages and LLM output text before they reach ClickHouse.
+# Only classification metadata (domain, category, severity) is stored.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # CRITICAL: Redact user messages AND LLM output text before they reach SigNoz
+  # We store the CLASSIFICATION METADATA, not the raw input or output text
+  attributes:
+    actions:
+      - key: guardrail.user.raw_message
+        action: delete
+      - key: gen_ai.input.messages
+        action: delete
+      - key: gen_ai.output.messages
+        action: delete
+
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+exporters:
+  otlp:
+    endpoint: host.docker.internal:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes, batch]
+      exporters: [otlp]

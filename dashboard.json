@@ -1,0 +1,145 @@
+{
+  "title": "GuardrailOps — AI Safety & Crisis Overview",
+  "description": "SigNoz dashboard monitoring AI safety events, jailbreak attempts, PII redaction, and user threat scores captured by GuardrailOps SDK.",
+  "tags": ["guardrailops", "ai-safety", "opentelemetry", "jailbreak"],
+  "widgets": [
+    {
+      "id": "panel-1-crisis-counter",
+      "title": "🚨 Total Safety Events (24h)",
+      "panelType": "value",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregateOperator": "count",
+              "dataSource": "traces",
+              "disabled": false,
+              "name": "A",
+              "queryName": "A",
+              "filters": {
+                "op": "AND",
+                "items": [
+                  {
+                    "key": { "key": "guardrail.triggered", "type": "bool" },
+                    "op": "=",
+                    "value": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "panel-2-severity-pie",
+      "title": "📊 Crisis Severity Breakdown",
+      "panelType": "pie",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregateOperator": "count",
+              "dataSource": "traces",
+              "disabled": false,
+              "name": "A",
+              "queryName": "A",
+              "groupBy": [{ "key": "guardrail.crisis.severity", "type": "string" }],
+              "filters": {
+                "op": "AND",
+                "items": [
+                  {
+                    "key": { "key": "guardrail.triggered", "type": "bool" },
+                    "op": "=",
+                    "value": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "panel-3-domain-bar",
+      "title": "🛡️ Threat Domain Hit Rate",
+      "panelType": "bar",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregateOperator": "count",
+              "dataSource": "traces",
+              "disabled": false,
+              "name": "A",
+              "queryName": "A",
+              "groupBy": [{ "key": "guardrail.domain", "type": "string" }],
+              "filters": {
+                "op": "AND",
+                "items": [
+                  {
+                    "key": { "key": "guardrail.triggered", "type": "bool" },
+                    "op": "=",
+                    "value": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "panel-4-latency-p99",
+      "title": "⚡ Classifier Latency (p99)",
+      "panelType": "graph",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregateOperator": "p99",
+              "aggregateAttribute": { "key": "guardrail.classifier.latency_ms", "type": "number" },
+              "dataSource": "traces",
+              "disabled": false,
+              "name": "A",
+              "queryName": "A"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "panel-5-flagged-users",
+      "title": "👤 Top Flagged Users",
+      "panelType": "table",
+      "query": {
+        "builder": {
+          "queryData": [
+            {
+              "aggregateOperator": "count",
+              "dataSource": "traces",
+              "disabled": false,
+              "name": "A",
+              "queryName": "A",
+              "groupBy": [
+                { "key": "guardrail.user.id", "type": "string" },
+                { "key": "guardrail.user.status", "type": "string" },
+                { "key": "guardrail.user.threat_score", "type": "number" }
+              ],
+              "filters": {
+                "op": "AND",
+                "items": [
+                  {
+                    "key": { "key": "guardrail.user.flagged", "type": "bool" },
+                    "op": "=",
+                    "value": true
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

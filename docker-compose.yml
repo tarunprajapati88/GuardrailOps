@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  # MindBot Demo Chatbot App
+  mindbot:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:20-alpine
+        WORKDIR /app
+        COPY package*.json ./
+        RUN npm install
+        COPY . .
+        EXPOSE 3000
+        CMD ["npx", "tsx", "demo-app/server.ts"]
+    ports:
+      - "3000:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SLACK_WEBHOOK_URL=http://webhook-relay:3001/alert
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
+      - PORT=3000
+    depends_on:
+      - otel-collector
+
+  # OTel Collector with PII Scrubbing Processor
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otelcol/config.yaml"]
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol/config.yaml
+
+  # Webhook Relay (SigNoz Alert → Slack Push)
+  webhook-relay:
+    build:
+      context: .
+      dockerfile_inline: |
+        FROM node:20-alpine
+        WORKDIR /app
+        COPY package*.json ./
+        RUN npm install
+        COPY . .
+        EXPOSE 3001
+        CMD ["npx", "tsx", "webhook-relay/server.ts"]
+    ports:
+      - "3001:3001"
+    environment:
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - RELAY_PORT=3001
