@@ -12,6 +12,13 @@ import express from "express";
 const app = express();
 app.use(express.json());
 
+import crypto from "crypto";
+
+function hashId(id: string): string {
+  if (id.startsWith("usr_sha256_")) return id;
+  return "usr_sha256_" + crypto.createHash("sha256").update(id).digest("hex").substring(0, 8);
+}
+
 const SLACK_WEBHOOK_URL = process.env.SLACK_WEBHOOK_URL;
 
 /**
@@ -27,10 +34,13 @@ async function sendSlackMessage(details: {
   threatScore?: number;
   classifier?: string;
   latencyMs?: number;
+  traceId?: string;
 }): Promise<boolean> {
+  const hashedUserId = hashId(details.userId);
+
   if (!SLACK_WEBHOOK_URL) {
     console.log(
-      `\n[SLACK RELAY MOCK ALERT]: ${details.isMentalHealth ? "🆘 CRISIS" : "🚨 ALERT"} for ${details.userId} (${details.domain}/${details.category}) via ${details.classifier ?? "llama-guard"} (${details.latencyMs ?? 0}ms)`
+      `\n[SLACK RELAY MOCK ALERT]: ${details.isMentalHealth ? "🆘 CRISIS" : "🚨 ALERT"} for ${hashedUserId} (${details.domain}/${details.category}) via ${details.classifier ?? "llama-guard"} (${details.latencyMs ?? 0}ms)`
     );
     return true;
   }
@@ -40,7 +50,7 @@ async function sendSlackMessage(details: {
     : "🚨 CRITICAL GUARDRAIL THREAT ALERT";
 
   const payload = {
-    text: `${title}: ${details.domain} / ${details.category} (User: ${details.userId})`,
+    text: `${title}: ${details.domain} / ${details.category} (User: ${hashedUserId})`,
     blocks: [
       {
         type: "header",
@@ -49,7 +59,7 @@ async function sendSlackMessage(details: {
       {
         type: "section",
         fields: [
-          { type: "mrkdwn", text: `*User ID / Email:*\n\`${details.userId}\`` },
+          { type: "mrkdwn", text: `*User ID:*\n\`${hashedUserId}\`` },
           { type: "mrkdwn", text: `*Threat Domain:*\n${details.domain}` },
           { type: "mrkdwn", text: `*Violation Category:*\n${details.category}` },
           { type: "mrkdwn", text: `*Crisis Severity:*\n${details.severity}` },
@@ -66,6 +76,23 @@ async function sendSlackMessage(details: {
             : `🔴 *Action Taken:* Request blocked. Investigating trace in SigNoz Trace Explorer.`,
         },
       },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: {
+              type: "plain_text",
+              text: "View Trace in SigNoz",
+              emoji: true
+            },
+            url: details.traceId 
+              ? `http://localhost:3301/trace/${details.traceId}`
+              : `http://localhost:3301/traces?tags=guardrail.session_id%3D${details.sessionId}`,
+            style: "primary"
+          }
+        ]
+      }
     ],
   };
 
@@ -116,6 +143,7 @@ app.post("/alert", async (req, res) => {
     const severity = payload.severity ?? payload.labels?.guardrail_crisis_severity ?? "CRITICAL";
     const classifier = payload.classifier ?? payload.labels?.guardrail_classifier ?? "llama-guard";
     const latencyMs = payload.classifierLatencyMs ?? 0;
+    const traceId = payload.traceId ?? payload.labels?.traceId;
 
     const isMentalHealth = domain === "mental-health";
 
@@ -128,6 +156,7 @@ app.post("/alert", async (req, res) => {
       isMentalHealth,
       classifier,
       latencyMs,
+      traceId,
     });
 
     return res.json({

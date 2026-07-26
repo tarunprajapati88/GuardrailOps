@@ -18,6 +18,7 @@
  */
 
 import type { Domain, UserThreatState, UserStatus } from "./types.js";
+import crypto from "crypto";
 
 const DOMAIN_POINTS: Partial<Record<Domain, number>> = {
   abuse: 10,
@@ -27,6 +28,26 @@ const DOMAIN_POINTS: Partial<Record<Domain, number>> = {
 
 const REPEAT_MULTIPLIER = 1.5;
 
+// Global state for user tracking across all wrapper instances
+const globalUsers: Map<string, UserThreatState> = new Map();
+let globalTtlMs: number = 24 * 60 * 60 * 1000; // 24 hours default
+
+/**
+ * Set the Time-to-Live (TTL) for threat state to comply with GDPR Data Minimization.
+ * After TTL expires since the last violation, the user's state is cleared.
+ */
+export function setThreatTTL(ms: number): void {
+  globalTtlMs = ms;
+}
+
+/**
+ * Reset a user's threat state to comply with GDPR Art. 17 (Right to Erasure).
+ */
+export function clearUser(rawUserId: string): void {
+  const userId = hashId(rawUserId);
+  globalUsers.delete(userId);
+}
+
 function getStatus(score: number): UserStatus {
   if (score >= 61) return "BLOCKED";
   if (score >= 31) return "RESTRICTED";
@@ -34,15 +55,29 @@ function getStatus(score: number): UserStatus {
   return "NORMAL";
 }
 
-export class ThreatTracker {
-  private users: Map<string, UserThreatState> = new Map();
+function hashId(id: string): string {
+  if (id.startsWith("usr_sha256_")) return id; // already hashed
+  return "usr_sha256_" + crypto.createHash("sha256").update(id).digest("hex").substring(0, 8);
+}
 
+export class ThreatTracker {
   /**
    * Get current threat state for a user (creates default if new).
+   * Enforces TTL decay.
    */
-  getState(userId: string): UserThreatState {
-    if (!this.users.has(userId)) {
-      this.users.set(userId, {
+  getState(rawUserId: string): UserThreatState {
+    const userId = hashId(rawUserId);
+
+    if (globalUsers.has(userId)) {
+      const state = globalUsers.get(userId)!;
+      // GDPR Data Minimization: Decay threat state if TTL expired
+      if (state.lastViolationAt && Date.now() - state.lastViolationAt > globalTtlMs) {
+        globalUsers.delete(userId);
+      }
+    }
+
+    if (!globalUsers.has(userId)) {
+      globalUsers.set(userId, {
         userId,
         threatScore: 0,
         violationCount: 0,
@@ -51,14 +86,16 @@ export class ThreatTracker {
         domains: {},
       });
     }
-    return { ...this.users.get(userId)! };
+    return { ...globalUsers.get(userId)! };
   }
 
   /**
    * Record a violation for a user. Updates threat score and status.
    * Mental health domain is excluded — those users are protected.
    */
-  recordViolation(userId: string, domain: Domain): UserThreatState {
+  recordViolation(rawUserId: string, domain: Domain): UserThreatState {
+    const userId = hashId(rawUserId);
+
     // SAFETY: mental health users are never tracked
     if (domain === "mental-health") {
       return this.getState(userId);
@@ -82,16 +119,16 @@ export class ThreatTracker {
     state.domains[domain] = (state.domains[domain] ?? 0) + 1;
 
     // Save updated state
-    this.users.set(userId, state);
+    globalUsers.set(userId, state);
 
     return { ...state };
   }
 
   /**
-   * Reset a user's threat state (admin action).
+   * Reset a user's threat state (GDPR Art. 17).
    */
-  resetUser(userId: string): void {
-    this.users.delete(userId);
+  resetUser(rawUserId: string): void {
+    clearUser(rawUserId);
   }
 
   /**
@@ -108,7 +145,7 @@ export class ThreatTracker {
     const minOrder = statusOrder[minStatus];
     const results: UserThreatState[] = [];
 
-    for (const state of this.users.values()) {
+    for (const state of globalUsers.values()) {
       if (statusOrder[state.status] >= minOrder) {
         results.push({ ...state });
       }

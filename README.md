@@ -240,6 +240,36 @@ guardrail.user.violation_count   = 3
 ### PII Redaction & Data Privacy
 The OTel Collector configuration (`otel-collector-config.yaml`) runs an `attributes` deletion processor that strips `gen_ai.input.messages` and `gen_ai.output.messages` **before** writing spans to ClickHouse. User identifiers are hashed before telemetry export. **Raw prompt text never leaves application memory.**
 
+#### What GuardrailOps Observes (Classification Metadata)
+GuardrailOps is **classification middleware**. We observe **our own decisions**, not the user's content.
+
+```ini
+✅ guardrail.domain        = "jailbreak"
+✅ guardrail.action        = "BLOCKED"
+✅ guardrail.classifier    = "heuristic-prefilter"
+✅ guardrail.user.id       = "usr_sha256_e3b0c442"
+✅ guardrail.user.status   = "RESTRICTED"
+```
+
+#### What GuardrailOps NEVER Stores or Exports
+❌ The user's actual message text
+❌ The LLM's response content
+❌ Chat history or conversation context
+❌ Raw user identifiers (email, name, IP)
+
+### GDPR Compliance APIs (Art. 17 & Art. 5)
+For developers in the EU or handling health data, GuardrailOps exposes explicit privacy APIs:
+
+```typescript
+import { clearUser, setThreatTTL } from "guardrailops";
+
+// GDPR Art. 17: Right to be forgotten
+clearUser("user-123");  // Purges all threat state for this user
+
+// GDPR Art. 5: Data minimization (threat scores decay after TTL)
+setThreatTTL(24 * 60 * 60 * 1000); // 24 hours
+```
+
 ---
 
 ## ⚙️ Two-Layer Classification Architecture

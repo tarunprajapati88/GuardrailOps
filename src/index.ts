@@ -5,6 +5,7 @@
  */
 
 export { wrapWithGuardrailOps } from "./wrapper.js";
+export { clearUser, setThreatTTL } from "./threat-tracker.js";
 export type {
   GuardrailOpsConfig,
   LlamaGuardConfig,
