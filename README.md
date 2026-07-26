@@ -87,8 +87,8 @@ ollama serve
 
 ### 3. Clone & Install
 ```bash
-git clone https://github.com/tarunprajapati88/GaurdrailsOps.git
-cd GaurdrailsOps
+git clone https://github.com/tarunprajapati88/GuardrailOps.git
+cd GuardrailOps
 npm install
 cp .env.example .env
 ```
