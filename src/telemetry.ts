@@ -12,6 +12,7 @@
  *     └── guardrailops.alert (if push_alert = true)
  */
 
+import * as crypto from "crypto";
 import { trace, SpanStatusCode } from "@opentelemetry/api";
 import type { Span, Tracer } from "@opentelemetry/api";
 import { NodeSDK } from "@opentelemetry/sdk-node";
@@ -103,7 +104,8 @@ export function emitGuardrailSpan(event: GuardrailEvent): void {
     rootSpan.setAttribute("guardrail.session_id", event.sessionId);
 
     // ── User Threat Attributes ──
-    rootSpan.setAttribute("guardrail.user.id", event.userId);
+    const hashedUserId = `usr_sha256_${crypto.createHash("sha256").update(event.userId).digest("hex").substring(0, 8)}`;
+    rootSpan.setAttribute("guardrail.user.id", hashedUserId);
     rootSpan.setAttribute("guardrail.user.threat_score", event.userThreatScore);
     rootSpan.setAttribute("guardrail.user.status", event.userStatus);
     rootSpan.setAttribute(

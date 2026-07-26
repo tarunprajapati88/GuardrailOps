@@ -61,7 +61,7 @@ app.post("/slack/events", async (req, res) => {
         `Ask me questions about safety incidents:\n` +
         `• \`@GuardrailOpsBot show trace for session sess_demo_100\`\n` +
         `• \`@GuardrailOpsBot summary of today\`\n` +
-        `• \`@GuardrailOpsBot check user hacker.jack@darkweb.org\``;
+        `• \`@GuardrailOpsBot check user usr_sha256_e3b0c442\``;
     }
 
     return res.json({ text: replyText });

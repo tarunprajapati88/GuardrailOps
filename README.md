@@ -156,7 +156,7 @@ GuardrailOps includes built-in Slack incident response for on-call SRE teams:
 2. On-call SREs can ask questions directly in Slack:
    - `@GuardrailOpsBot show trace for session sess_demo_100`
    - `@GuardrailOpsBot 24h crisis summary`
-   - `@GuardrailOpsBot check user hacker.jack@darkweb.org`
+   - `@GuardrailOpsBot check user usr_sha256_e3b0c442`
 
 ---
 
