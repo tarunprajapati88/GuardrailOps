@@ -38,9 +38,23 @@
       "h": 4
     },
     {
-      "i": "panel-5-flagged-users",
+      "i": "panel-6-category-pie",
       "x": 0,
       "y": 8,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "i": "panel-7-classifier-pie",
+      "x": 6,
+      "y": 8,
+      "w": 6,
+      "h": 4
+    },
+    {
+      "i": "panel-5-flagged-users",
+      "x": 0,
+      "y": 12,
       "w": 12,
       "h": 6
     }
@@ -194,6 +208,96 @@
                 "expression": "serviceName = 'guardrailops-demo'"
               },
               "groupBy": [],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        }
+      }
+    },
+    {
+      "id": "panel-6-category-pie",
+      "title": "🧩 Safety Violation Categories (Pie)",
+      "panelTypes": "pie",
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "traces",
+              "disabled": false,
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "count() "
+                }
+              ],
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo'"
+              },
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "guardrail.category--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "guardrail.category",
+                  "type": "tag"
+                }
+              ],
+              "functions": [],
+              "having": {
+                "expression": ""
+              },
+              "orderBy": [],
+              "limit": null,
+              "stepInterval": null
+            }
+          ],
+          "queryFormulas": [],
+          "queryTraceOperator": []
+        }
+      }
+    },
+    {
+      "id": "panel-7-classifier-pie",
+      "title": "🤖 Guardrail Engine Trigger Distribution (Pie)",
+      "panelTypes": "pie",
+      "query": {
+        "queryType": "builder",
+        "builder": {
+          "queryData": [
+            {
+              "queryName": "A",
+              "dataSource": "traces",
+              "disabled": false,
+              "expression": "A",
+              "aggregations": [
+                {
+                  "expression": "count() "
+                }
+              ],
+              "filter": {
+                "expression": "serviceName = 'guardrailops-demo'"
+              },
+              "groupBy": [
+                {
+                  "dataType": "string",
+                  "id": "guardrail.classifier--string--tag",
+                  "isColumn": false,
+                  "isJSON": false,
+                  "key": "guardrail.classifier",
+                  "type": "tag"
+                }
+              ],
               "functions": [],
               "having": {
                 "expression": ""

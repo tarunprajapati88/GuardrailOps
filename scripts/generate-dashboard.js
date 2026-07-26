@@ -11,7 +11,9 @@ const dashboard = {
     { i: "panel-2-severity-pie", x: 6, y: 0, w: 6, h: 4 },
     { i: "panel-3-domain-bar", x: 0, y: 4, w: 6, h: 4 },
     { i: "panel-4-latency-p99", x: 6, y: 4, w: 6, h: 4 },
-    { i: "panel-5-flagged-users", x: 0, y: 8, w: 12, h: 6 }
+    { i: "panel-6-category-pie", x: 0, y: 8, w: 6, h: 4 },
+    { i: "panel-7-classifier-pie", x: 6, y: 8, w: 6, h: 4 },
+    { i: "panel-5-flagged-users", x: 0, y: 12, w: 12, h: 6 }
   ],
   widgets: [
     {
@@ -145,6 +147,80 @@ const dashboard = {
       }
     },
     {
+      id: "panel-6-category-pie",
+      title: "🧩 Safety Violation Categories (Pie)",
+      panelTypes: "pie",
+      query: {
+        queryType: "builder",
+        builder: {
+          queryData: [
+            {
+              queryName: "A",
+              dataSource: "traces",
+              disabled: false,
+              expression: "A",
+              aggregations: [{ expression: "count() " }],
+              filter: { expression: "serviceName = 'guardrailops-demo'" },
+              groupBy: [
+                {
+                  dataType: "string",
+                  id: "guardrail.category--string--tag",
+                  isColumn: false,
+                  isJSON: false,
+                  key: "guardrail.category",
+                  type: "tag"
+                }
+              ],
+              functions: [],
+              having: { expression: "" },
+              orderBy: [],
+              limit: null,
+              stepInterval: null
+            }
+          ],
+          queryFormulas: [],
+          queryTraceOperator: []
+        }
+      }
+    },
+    {
+      id: "panel-7-classifier-pie",
+      title: "🤖 Guardrail Engine Trigger Distribution (Pie)",
+      panelTypes: "pie",
+      query: {
+        queryType: "builder",
+        builder: {
+          queryData: [
+            {
+              queryName: "A",
+              dataSource: "traces",
+              disabled: false,
+              expression: "A",
+              aggregations: [{ expression: "count() " }],
+              filter: { expression: "serviceName = 'guardrailops-demo'" },
+              groupBy: [
+                {
+                  dataType: "string",
+                  id: "guardrail.classifier--string--tag",
+                  isColumn: false,
+                  isJSON: false,
+                  key: "guardrail.classifier",
+                  type: "tag"
+                }
+              ],
+              functions: [],
+              having: { expression: "" },
+              orderBy: [],
+              limit: null,
+              stepInterval: null
+            }
+          ],
+          queryFormulas: [],
+          queryTraceOperator: []
+        }
+      }
+    },
+    {
       id: "panel-5-flagged-users",
       title: "👤 Top Repeat Attacker Users (Blocked Count)",
       panelTypes: "table",
@@ -185,7 +261,7 @@ const dashboard = {
 };
 
 fs.writeFileSync("dashboard.json", JSON.stringify(dashboard, null, 2));
-console.log("Generated valid dashboard.json!");
+console.log("Generated valid dashboard.json with 7 panels!");
 
 const escapedJson = JSON.stringify(dashboard).replace(/'/g, "''");
 
