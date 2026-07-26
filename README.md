@@ -19,14 +19,14 @@ Existing guardrail tools (NeMo, LLM Guard, `@openai/guardrails`) check text and 
 
 GuardrailOps closes that loop:
 
-| What Others Do | What GuardrailOps Does |
-|:--|:--|
-| Return `{ flagged: true }` | **Block the response, show 988 Crisis Lifeline, page your SRE team on Slack** |
-| Check one message at a time | **Track users across sessions with escalating threat scores** |
-| Require proprietary cloud APIs | **100% Vendor-Free — Runs local Meta Llama Guard 3 via Ollama ($0 cost)** |
-| No OpenTelemetry export | **Emit native `guardrail.*` OTel spans directly to SigNoz with PII scrubbed at Collector** |
-| No alerting | **Push Slack Block Kit alerts the instant `push_alert = true`** |
-| No triage | **SRE asks the bot "show trace for session X" via SigNoz MCP** |
+| Feature | Existing Guardrails | GuardrailOps |
+|:--|:--|:--|
+| **Crisis Action** | Return `{ flagged: true }` | **Block response + show 988 Crisis Lifeline + page SRE on Slack** |
+| **Vulnerable Users** | Penalize all violations equally | **Protected Mental Health status (0 threat points added; help dispatched)** |
+| **Session State** | Stateless (1 message at a time) | **Stateful multi-turn threat accumulator across user sessions** |
+| **Data Privacy** | Cloud API dependencies | **Local-First — Zero data leaves your infrastructure ($0 cost)** |
+| **Telemetry** | None or adapter layers | **Native `guardrail.*` OTel spans to SigNoz with PII scrubbed at Collector** |
+| **Incident Triage** | Manual log inspection | **Natural language trace querying via SigNoz MCP Server** |
 
 ---
 
@@ -211,7 +211,7 @@ flowchart TB
 | Layer | SigNoz Feature | GuardrailOps Implementation |
 |:--|:--|:--|
 | **1. Traces** | **Trace Explorer** | Every LLM request emits 1 standard OTel span with rich `guardrail.*` semantic attributes to `http://localhost:4318/v1/traces`. |
-| **2. Metrics** | **Metrics & Latency** | Derived automatically from trace spans: threat domain rate, block %, classifier latency (0ms pre-filter vs 480ms Llama Guard 3). |
+| **2. Metrics** | **Metrics & Latency** | Derived automatically from trace spans: threat domain rate, block %, classifier latency. |
 | **3. Dashboards**| **Pre-Built Panels** | Import `dashboard.json` into SigNoz for 1-click visualization of jailbreak spikes, threat score trends, and crisis events. |
 | **4. Alerts** | **SigNoz Alert Engine** | Configure real-time alerts on threshold breaches (e.g., >3 jailbreaks/min) to automatically trigger the GuardrailOps incident relay. |
 | **5. Triage** | **SigNoz MCP Server** | SREs query live SigNoz trace data via natural language in Slack using the integrated Model Context Protocol (MCP) framework. |
@@ -230,15 +230,15 @@ guardrail.category               = "violent_crimes"
 guardrail.crisis.severity        = "CRITICAL"
 guardrail.push_alert             = true
 guardrail.classifier             = "llama-guard"
-guardrail.classifier.latency_ms  = 498
-guardrail.user.id                = "hacker.jack@darkweb.org"
+guardrail.classifier.latency_ms  = 480
+guardrail.user.id                = "usr_sha256_e3b0c442"
 guardrail.user.threat_score      = 65
 guardrail.user.status            = "RESTRICTED"
 guardrail.user.violation_count   = 3
 ```
 
 ### PII Redaction & Data Privacy
-The OTel Collector configuration (`otel-collector-config.yaml`) runs an `attributes` deletion processor that strips `gen_ai.input.messages` and `gen_ai.output.messages` **before** writing spans to ClickHouse. **Raw prompt text never leaves the application memory.**
+The OTel Collector configuration (`otel-collector-config.yaml`) runs an `attributes` deletion processor that strips `gen_ai.input.messages` and `gen_ai.output.messages` **before** writing spans to ClickHouse. User identifiers are hashed before telemetry export. **Raw prompt text never leaves application memory.**
 
 ---
 
@@ -246,47 +246,36 @@ The OTel Collector configuration (`otel-collector-config.yaml`) runs an `attribu
 
 GuardrailOps uses a high-performance **Two-Layer Architecture**:
 
-| Layer | Engine | Covers | Latency | Cost / Privacy |
+| Layer | Engine | Covers | Canonical Latency | Tradeoff / Privacy |
 |:--|:--|:--|:--|:--|
-| **Layer 1: Primary ML Classifier** | **Meta Llama Guard 3** *(default)*, OpenAI Moderation, or Custom | All 14 MLCommons safety categories (S1–S14: Mental health, abuse, weapons, CSAM, hate, code injection) | ~480ms | **$0.00 (Local / Private)** |
-| **Layer 2: Fast-Path Pre-Filter** | **Heuristic Regex Safety Net** | Immediate DAN/persona hijack short-circuits, base64 encoding attacks, fallback safety net | **< 1ms** | **$0.00 (Local)** |
+| **Layer 1: Primary ML Classifier** | **Meta Llama Guard 3** *(default)*, OpenAI Moderation, or Custom | All 14 MLCommons safety categories (S1–S14: Mental health, abuse, weapons, CSAM, hate, code injection) | **~480ms** | **$0.00 (Local-First / Zero External Data Leakage)** |
+| **Layer 2: Fast-Path Pre-Filter** | **Heuristic Regex Safety Net** | Immediate DAN/persona hijack short-circuits, base64 encoding attacks, fallback safety net | **< 1ms** | **$0.00 (Zero-Latency Short-Circuit)** |
 
-### Pluggable Classifier Examples
+> **Privacy vs. Latency Tradeoff**: Local Llama Guard 3 introduces a ~10x latency cost (~480ms vs ~45ms for cloud OpenAI Moderation). This is an explicit architectural trade-off favoring **100% data privacy and zero API costs** over cloud network latency.
 
-```typescript
-// 1. Local Meta Llama Guard 3 via Ollama ($0 cost, 100% private)
-const client = wrapWithGuardrailOps(llmClient, {
-  domains: ["mental-health", "abuse", "illegal", "jailbreak"],
-  classifier: "llama-guard",
-  llamaGuard: {
-    endpoint: "http://localhost:11434",
-    model: "llama-guard3:1b",
-  },
-});
+### Taxonomy Mapping (MLCommons S1–S14 → Developer Domain Aliases)
 
-// 2. Cloud-Hosted Llama Guard 4 (NVIDIA NIM API)
-const client = wrapWithGuardrailOps(llmClient, {
-  domains: ["mental-health", "abuse", "illegal", "jailbreak"],
-  classifier: "llama-guard",
-  llamaGuard: {
-    endpoint: "https://integrate.api.nvidia.com/v1",
-    apiKey: process.env.NVIDIA_API_KEY,
-    model: "meta/llama-guard-4-12b",
-    provider: "openai-compatible",
-  },
-});
-```
+GuardrailOps maps Llama Guard 3's MLCommons taxonomy into 5 developer-friendly UX domain aliases:
+
+| MLCommons Safety Category | GuardrailOps Domain Alias | Default Action |
+|:--|:--|:--|
+| **S11** (Suicide & Self-Harm) | `mental-health` | BLOCK + 988 Lifeline + Page SRE (+0 threat pts) |
+| **S5** (Defamation), **S7** (Privacy), **S10** (Hate), **S12** (Sexual) | `abuse` | BLOCK + Flag User (+10 pts) |
+| **S1** (Violent), **S2** (Non-Violent), **S3** (Sex Crimes), **S4** (CSAM), **S9** (CBRN Weapons) | `illegal` | BLOCK + Flag User + Push Alert (+25 pts) |
+| **S14** (Code Interpreter / Prompt Injection) | `jailbreak` | BLOCK + Flag User + Push Alert (+15 pts) |
+| **S6** (Specialized Advice), **S8** (IP Violation), **S13** (Elections) | `off-topic` | BLOCK (+5 pts) |
 
 ---
 
 ## 🛡️ Threat Domains & Stateful User Scoring
 
-### 🧠 Mental Health (Protected Users)
-| Trigger | Action | User Flagged? |
-|:--|:--|:--|
-| *"I don't want to be here anymore"* | BLOCK + 988 Lifeline fallback + push alert | **❌ Never** |
+### 🧠 Mental Health (Protected Users — Core Architectural Decision)
 
-> Mental health users are **protected, not punished**. The alert brings help, not consequences.
+| Trigger | Action | Threat Points Added | User Flagged? |
+|:--|:--|:--|:--|
+| *"I don't want to be here anymore"* | BLOCK + 988 Lifeline fallback + push Slack alert | **+0 pts** | **❌ Never** |
+
+> **Design Decision**: Mental health users in crisis are **protected, not penalized**. They receive 0 threat points so their account status is never restricted or blocked. The Slack alert brings immediate human outreach, not punishment.
 
 ### Stateful User Threat Accumulator
 Repeat offenders are tracked across sessions with escalating consequences:
@@ -337,17 +326,17 @@ guardrailops/
 
 ## ⚖️ Comparison with Existing Tools
 
-| Feature | NeMo Guardrails | `@openai/guardrails` | **GuardrailOps** |
-|:--|:--|:--|:--|
-| Language | Python only | TypeScript | **TypeScript** |
-| Classifier Backends | Hardcoded | OpenAI only | **Pluggable (Llama Guard / NVIDIA / OpenAI / Custom)** |
-| Data Privacy & Cost | Requires API credits | Requires OpenAI API | **100% Local ($0 cost, HIPAA/SOC2 compliant)** |
-| OpenTelemetry Spans | Adapter | ❌ None | **✅ Native OTel GenAI Spans to SigNoz** |
-| PII Scrubbing | ❌ | In-memory check | **✅ Collector-level scrubbing** |
-| User Tracking | ❌ | ❌ | **✅ Stateful multi-turn threat scores** |
-| Real-time Alerts | ❌ | ❌ (throws JS error) | **✅ Slack Block Kit push alerts** |
-| Crisis Protection | ❌ | ❌ | **✅ 988 Lifeline + protected user** |
-| SigNoz Native | ❌ | ❌ | **✅ 5-layer SigNoz integration** |
+| Feature | NeMo Guardrails | Guardrails AI | `@openai/guardrails` | **GuardrailOps** |
+|:--|:--|:--|:--|:--|
+| **Language** | Python only | Python only | TypeScript | **TypeScript / Node.js Native** |
+| **Classifier Backends** | Hardcoded | Custom/Ollama | OpenAI only | **Pluggable (Llama Guard / NVIDIA / OpenAI / Custom)** |
+| **Data Privacy** | API dependent | Local option | Requires OpenAI | **100% Local-First (Zero external data leakage)** |
+| **OpenTelemetry Spans** | Adapter | Native (Python) | ❌ None | **✅ Native OTel GenAI Spans to SigNoz (Node.js)** |
+| **PII Scrubbing** | ❌ | In-memory | In-memory | **✅ Collector-level scrubbing + User Hashing** |
+| **Session User Tracking** | ❌ | ❌ | ❌ | **✅ Stateful multi-turn threat scores** |
+| **ChatOps Alerts** | ❌ | ❌ | ❌ (throws JS error) | **✅ Slack Block Kit push alerts** |
+| **Protected Crisis User** | ❌ | ❌ | ❌ | **✅ 988 Lifeline + 0 threat pts for mental health** |
+| **SigNoz Native** | ❌ | OTel generic | ❌ | **✅ 5-layer SigNoz integration + MCP bot** |
 
 ---
 
