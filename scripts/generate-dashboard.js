@@ -34,6 +34,7 @@ const dashboard = {
               groupBy: [],
               functions: [],
               having: { expression: "" },
+              legend: "Total Events",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -71,6 +72,7 @@ const dashboard = {
               ],
               functions: [],
               having: { expression: "" },
+              legend: "{{guardrail.crisis.severity}}",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -108,6 +110,7 @@ const dashboard = {
               ],
               functions: [],
               having: { expression: "" },
+              legend: "{{guardrail.domain}}",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -136,6 +139,7 @@ const dashboard = {
               groupBy: [],
               functions: [],
               having: { expression: "" },
+              legend: "Latency p99 (ms)",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -173,6 +177,7 @@ const dashboard = {
               ],
               functions: [],
               having: { expression: "" },
+              legend: "{{guardrail.category}}",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -210,6 +215,7 @@ const dashboard = {
               ],
               functions: [],
               having: { expression: "" },
+              legend: "{{guardrail.classifier}}",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -247,6 +253,7 @@ const dashboard = {
               ],
               functions: [],
               having: { expression: "" },
+              legend: "{{guardrail.user.id}}",
               orderBy: [],
               limit: null,
               stepInterval: null
@@ -261,7 +268,7 @@ const dashboard = {
 };
 
 fs.writeFileSync("dashboard.json", JSON.stringify(dashboard, null, 2));
-console.log("Generated valid dashboard.json with 7 panels!");
+console.log("Generated valid dashboard.json with legends!");
 
 const escapedJson = JSON.stringify(dashboard).replace(/'/g, "''");
 

@@ -86,6 +86,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "Total Events",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
@@ -131,6 +132,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "{{guardrail.crisis.severity}}",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
@@ -176,6 +178,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "{{guardrail.domain}}",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
@@ -212,6 +215,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "Latency p99 (ms)",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
@@ -257,6 +261,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "{{guardrail.category}}",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
@@ -302,6 +307,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "{{guardrail.classifier}}",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
@@ -347,6 +353,7 @@
               "having": {
                 "expression": ""
               },
+              "legend": "{{guardrail.user.id}}",
               "orderBy": [],
               "limit": null,
               "stepInterval": null
