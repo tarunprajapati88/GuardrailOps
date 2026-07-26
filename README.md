@@ -248,22 +248,22 @@ GuardrailOps uses a high-performance **Two-Layer Architecture**:
 
 | Layer | Engine | Covers | Canonical Latency | Tradeoff / Privacy |
 |:--|:--|:--|:--|:--|
-| **Layer 1: Primary ML Classifier** | **Meta Llama Guard 3** *(default)*, OpenAI Moderation, or Custom | All 14 MLCommons safety categories (S1–S14: Mental health, abuse, weapons, CSAM, hate, code injection) | **~480ms** | **$0.00 (Local-First / Zero External Data Leakage)** |
+| **Layer 1: Primary ML Classifier** | **Meta Llama Guard 3 (1B)** *(default)*, OpenAI Moderation, or Custom | 13 MLCommons safety categories (S1–S13: Mental health, abuse, weapons, CSAM, hate) | **~480ms** | **$0.00 (Local-First / Zero External Data Leakage)** |
 | **Layer 2: Fast-Path Pre-Filter** | **Heuristic Regex Safety Net** | Immediate DAN/persona hijack short-circuits, base64 encoding attacks, fallback safety net | **< 1ms** | **$0.00 (Zero-Latency Short-Circuit)** |
 
 > **Privacy vs. Latency Tradeoff**: Local Llama Guard 3 introduces a ~10x latency cost (~480ms vs ~45ms for cloud OpenAI Moderation). This is an explicit architectural trade-off favoring **100% data privacy and zero API costs** over cloud network latency.
 
-### Taxonomy Mapping (MLCommons S1–S14 → Developer Domain Aliases)
+### Taxonomy Mapping (MLCommons S1–S13 + Regex)
 
-GuardrailOps maps Llama Guard 3's MLCommons taxonomy into 5 developer-friendly UX domain aliases:
+GuardrailOps maps Llama Guard 3's 1B MLCommons taxonomy (S1–S13) and Layer 2 Regex into 5 developer-friendly UX domain aliases:
 
-| MLCommons Safety Category | GuardrailOps Domain Alias | Default Action |
+| Safety Category / Engine | GuardrailOps Domain Alias | Default Action |
 |:--|:--|:--|
 | **S11** (Suicide & Self-Harm) | `mental-health` | BLOCK + 988 Lifeline + Page SRE (+0 threat pts) |
 | **S5** (Defamation), **S7** (Privacy), **S10** (Hate), **S12** (Sexual) | `abuse` | BLOCK + Flag User (+10 pts) |
-| **S1** (Violent), **S2** (Non-Violent), **S3** (Sex Crimes), **S4** (CSAM), **S9** (CBRN Weapons) | `illegal` | BLOCK + Flag User + Push Alert (+25 pts) |
-| **S14** (Code Interpreter / Prompt Injection) | `jailbreak` | BLOCK + Flag User + Push Alert (+15 pts) |
-| **S6** (Specialized Advice), **S8** (IP Violation), **S13** (Elections) | `off-topic` | BLOCK (+5 pts) |
+| **S1** (Violent), **S2** (Non-Violent), **S3** (Sex), **S4** (CSAM), **S9** (CBRN) | `illegal` | BLOCK + Flag User + Push Alert (+25 pts) |
+| **Layer 2 Regex** (DAN Prompts / Roleplay Hijack) | `jailbreak` | BLOCK + Flag User + Push Alert (+15 pts) |
+| **S6** (Specialized Advice), **S8** (IP), **S13** (Elections) | `off-topic` | BLOCK (+5 pts) |
 
 ---
 
