@@ -11,6 +11,19 @@ GuardrailOps is a vendor-free, drop-in safety wrapper for LLM clients. It interc
 
 ---
 
+## 📌 Table of Contents
+- [Why GuardrailOps?](#why-guardrailops)
+- [Quick Start](#quick-start)
+- [SigNoz & OpenTelemetry (OTel) Integration](#signoz--opentelemetry-otel-integration)
+- [Slack Push Alerts & Interactive Bot Guide](#-slack-push-alerts--interactive-bot-guide)
+- [OpenTelemetry Span Attributes](#opentelemetry-span-attributes)
+- [Project Structure & Foundry Deployment](#-project-structure)
+- [Comparison with Existing Tools](#%EF%B8%8F-comparison-with-existing-tools)
+- [AI Tool Disclosure (Hackathon Rule #7)](#ai-tool-disclosure)
+- [Ethical Disclaimer](#ethical-disclaimer)
+
+---
+
 ## Why GuardrailOps?
 
 Existing guardrail tools (NeMo, LLM Guard, `@openai/guardrails`) check text and return scores. **None of them answer the question:**
@@ -263,6 +276,8 @@ guardrail.crisis.severity        = "CRITICAL"
 guardrail.push_alert             = true
 guardrail.classifier             = "llama-guard"
 guardrail.classifier.latency_ms  = 480
+guardrail.response_blocked       = true
+guardrail.fallback_shown         = true
 guardrail.user.id                = "usr_sha256_e3b0c442"
 guardrail.session_id             = "sess_demo_100"
 ```
@@ -377,11 +392,13 @@ guardrailops/
 │   └── generate-dashboard.js     # SigNoz dashboard generator & seeder script
 ├── dashboard.json                # Pre-built SigNoz dashboard schema (v3)
 ├── otel-collector-config.yaml    # PII scrubbing config
-├── casting.yaml                  # Foundry deployment configuration
+├── casting.yaml                  # Foundry deployment manifest (SigNoz hackathon track)
 ├── casting.yaml.lock             # Foundry deployment lock file
 ├── docker-compose.yml            # Full stack docker setup for judges
 └── .env.example                  # Environment template
 ```
+
+> 💡 **Foundry Deployment Note:** `casting.yaml` and `casting.yaml.lock` are the official deployment manifests used by **Foundry** (`foundryctl cast -f casting.yaml`) to automatically provision SigNoz, its MCP Server, and the GuardrailOps stack in 1 step for hackathon evaluation.
 
 ---
 
