@@ -65,6 +65,11 @@ const rawLLMClient = new MockLLMClient();
 // Protect LLM client with GuardrailOps SDK!
 const protectedClient = wrapWithGuardrailOps(rawLLMClient, {
   domains: ["mental-health", "abuse", "illegal", "jailbreak", "off-topic"],
+  domainConfig: {
+    "mental-health": {
+      mode: "companion", // Showcase P1: Distinguishes general distress (ALLOW) vs imminent crisis (BLOCK)
+    },
+  },
   classifier: "auto", // Uses Llama Guard 3 local → Heuristic fallback
   llamaGuard: {
     endpoint: "http://localhost:11434",

@@ -119,8 +119,9 @@ npm run start:bot
    - `sarah.connor@acme.com` (Normal User — 0 Threats)
    - `hacker.jack@darkweb.org` (Attacker Simulation)
 3. **Trigger Safety Violations**:
-   - Click **Jailbreak Demo** or **Abuse Demo**.
-   - Watch GuardrailOps intercept the prompt, return a safe refusal fallback, increase user threat score from `NORMAL` → `WATCH` → `RESTRICTED` → `BLOCKED`, and trigger Slack alert dispatching!
+   - Click **Distress Demo**: Shows how companion mode allows general distress while observing the trace.
+   - Click **Crisis Demo**: Shows immediate block + 988 Lifeline + Slack Alert.
+   - Click **Jailbreak Demo** or **Abuse Demo**: Watch GuardrailOps intercept the prompt, return a safe refusal fallback, increase user threat score from `NORMAL` → `WATCH` → `RESTRICTED` → `BLOCKED`, and trigger Slack alerts!
 4. **View Spans in SigNoz UI**:
    - Open SigNoz UI at **[http://localhost:8080](http://localhost:8080)**.
    - Go to **Traces** → Filter by Service Name: **`guardrailops-demo`**.
