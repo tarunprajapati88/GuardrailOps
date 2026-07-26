@@ -197,6 +197,13 @@ flowchart TB
         SRE --> BOT["Slack MCP Bot (port 3002)"]
         BOT <--> MCP["SigNoz MCP Server"]
     end
+
+    classDef entry fill:#10b981,stroke:#059669,stroke-width:2px,color:#fff;
+    classDef alert fill:#f43f5e,stroke:#e11d48,stroke-width:2px,color:#fff;
+    classDef signoz fill:#0284c7,stroke:#0369a1,stroke-width:2px,color:#fff;
+    class USER entry;
+    class BLOCK,ALERT,SLACK alert;
+    class TRACES,DASH,ALERT,MCP signoz;
 ```
 
 ### 5 Layers of SigNoz Integration
@@ -206,8 +213,8 @@ flowchart TB
 | **1. Traces** | **Trace Explorer** | Every LLM request emits 1 standard OTel span with rich `guardrail.*` semantic attributes to `http://localhost:4318/v1/traces`. |
 | **2. Metrics** | **Metrics & Latency** | Derived automatically from trace spans: threat domain rate, block %, classifier latency (0ms pre-filter vs 480ms Llama Guard 3). |
 | **3. Dashboards**| **Pre-Built Panels** | Import `dashboard.json` into SigNoz for 1-click visualization of jailbreak spikes, threat score trends, and crisis events. |
-| **4. Alerts** | **Alert Manager** | Webhook triggers when `WHERE guardrail.push_alert = true` → routes to Slack Webhook Relay. |
-| **5. MCP Triage**| **Contextual AI Bot** | SREs ask natural language questions (`@GuardrailOpsBot show trace for session X`) via SigNoz MCP. |
+| **4. Alerts** | **SigNoz Alert Engine** | Configure real-time alerts on threshold breaches (e.g., >3 jailbreaks/min) to automatically trigger the GuardrailOps incident relay. |
+| **5. Triage** | **SigNoz MCP Server** | SREs query live SigNoz trace data via natural language in Slack using the integrated Model Context Protocol (MCP) framework. |
 
 ### OpenTelemetry Span Attributes
 
