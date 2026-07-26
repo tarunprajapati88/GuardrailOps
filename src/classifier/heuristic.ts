@@ -106,11 +106,21 @@ const PREFILTER_RULES: PatternRule[] = [
     confidence: 0.7,
   },
   {
+    name: "mental_health_distress",
+    domain: "mental-health",
+    category: "general_distress",
+    patterns: [
+      /(?:feeling\s+down|everything\s+feels\s+hopeless|don'?t\s+see\s+a\s+way\s+out|no\s+reason\s+to\s+keep\s+going)/i,
+    ],
+    severity: "HIGH",
+    confidence: 0.8,
+  },
+  {
     name: "suicidal_ideation_heuristic",
     domain: "mental-health",
     category: "suicidal_ideation",
     patterns: [
-      /(?:don'?t\s+want\s+to\s+be\s+here\s+anymore|end\s+my\s+life|want\s+to\s+die|kill\s+my\s*self|commit\s+suicide|end\s+it\s+all|everything\s+feels\s+hopeless)/i,
+      /(?:don'?t\s+want\s+to\s+be\s+here\s+anymore|end\s+my\s+life|want\s+to\s+die|kill\s+my\s*self|commit\s+suicide|end\s+it\s+all|plan\s+to\s+hurt\s+myself)/i,
       /(?:no\s+reason\s+to\s+live|suicidal\s+thoughts?|self\s*harm)/i,
     ],
     severity: "CRITICAL",

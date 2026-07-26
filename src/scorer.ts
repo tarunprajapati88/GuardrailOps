@@ -72,11 +72,29 @@ export class Scorer {
       };
     }
 
+    const mode = domainConfig.mode || "strict";
+
     // Determine action from domain config
-    const action: Action = domainConfig.action;
+    let action: Action = domainConfig.action;
+
+    // Apply companion mode logic for mental-health
+    if (classification.domain === "mental-health" && mode === "companion") {
+      if (classification.severity === "CRITICAL") {
+        action = "BLOCK";
+      } else if (classification.severity === "HIGH") {
+        action = "WARN";
+      } else {
+        action = "ALLOW";
+      }
+    }
 
     // Update user threat state (only for flaggable domains)
-    if (domainConfig.flagUser) {
+    let shouldFlag = domainConfig.flagUser;
+    if (classification.domain === "mental-health" && mode === "companion") {
+      shouldFlag = classification.severity === "CRITICAL";
+    }
+
+    if (shouldFlag) {
       this.threatTracker.recordViolation(userId, classification.domain);
     }
 
@@ -84,19 +102,24 @@ export class Scorer {
 
     // Determine push_alert — DECOUPLED from severity
     let pushAlert = domainConfig.alert;
+    
+    // In companion mode, only alert on CRITICAL mental health flags
+    if (classification.domain === "mental-health" && mode === "companion") {
+      pushAlert = classification.severity === "CRITICAL";
+    }
 
     // Escalation: if user has repeated violations, force push_alert even if
     // the individual domain wouldn't normally alert
     if (
       userState.violationCount >= REPEAT_VIOLATION_THRESHOLD &&
-      domainConfig.flagUser
+      shouldFlag
     ) {
       pushAlert = true;
     }
 
     // Determine fallback message
     const fallbackMessage =
-      action === "BLOCK" ? domainConfig.fallbackMessage : null;
+      action === "BLOCK" || action === "WARN" ? domainConfig.fallbackMessage : null;
 
     return {
       classification,

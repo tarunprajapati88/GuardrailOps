@@ -36,6 +36,7 @@ export interface DomainConfig {
   alert: boolean;
   flagUser: boolean;
   fallbackMessage: string;
+  mode?: "strict" | "companion"; // specifically for mental-health domain
 }
 
 // ─── Stateful user threat tracking ───
